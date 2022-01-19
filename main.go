@@ -1,8 +1,8 @@
 package main
 
 import (
-	"dbg/ptrace"
 	"fmt"
+	"gotcha/ptrace"
 	"os"
 )
 
