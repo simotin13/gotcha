@@ -8,7 +8,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+
 static void DPRINT(const char *fmt, ...)
+{
+ 	va_list args;
+    va_start(args, fmt);
+	vprintf(fmt, args);
+	va_end(args);
+	printf("\n");
+}
+
+static void LOG(const char *fmt, ...)
 {
  	va_list args;
 	FILE* fp = fopen("debug.log", "a");
@@ -24,6 +34,13 @@ pid_t fork_target(char *target, char **argv) {
 	char *argvs[] = {NULL};
 	char *execenvp[] = {NULL};
 	int i = 0;
+	DPRINT("target:%s", target);
+	if (argv != NULL) {
+		while (*argv) {
+			DPRINT("arg:%s", *argv);
+			*argv++;
+		}
+	}
     pid_t pid = fork();
 	if (pid < 0) {
 		return -1;
@@ -33,17 +50,15 @@ pid_t fork_target(char *target, char **argv) {
 	}
 
 	// child proc from here
-	DPRINT("PTRACE_TRACEME");
 	ret = ptrace(PTRACE_TRACEME, 0, 0, 0);
 	if (ret != 0) {
 		return -1;
 	}
-	DPRINT("Execve");
 	ret = execve(target, argvs, execenvp);
 	if (ret != 0) {
 		return -1;
 	}
-	return pid;
+	return 0;
 }
 
 int wait_target(pid_t pid, int *pWstatus) {

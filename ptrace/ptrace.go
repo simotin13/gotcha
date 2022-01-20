@@ -41,17 +41,25 @@ type Reg_X64 struct {
 }
 
 func ForkTarget(target string, argv []string) int {
-	// TODO pass argvs
+	var c_argv **C.char
+	var c_args []*C.char
 	if 0 < len(argv) {
-		fmt.Println(len(argv))
-		//c_args := make([]*C.char, len(argv))
-		//c_argv = (**C.char)(&c_args[0])
+		for _, arg := range argv {
+			c_arg := C.CString(arg)
+			c_args = append(c_args, c_arg)
+		}
+		c_argv = (**C.char)(&c_args[0])
 	}
 	c_target := C.CString(target)
-	var c_argv **C.char = nil
 	c_pid := C.fork_target(c_target, c_argv)
 	C.free(unsafe.Pointer(c_target))
-	return int(c_pid)
+
+	for _, c_arg := range c_args {
+		C.free(unsafe.Pointer(c_arg))
+	}
+	pid := int(c_pid)
+	fmt.Println(pid)
+	return  pid
 }
 
 // wait target
