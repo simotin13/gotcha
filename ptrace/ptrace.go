@@ -6,7 +6,11 @@ package ptrace
 // #include <stdlib.h>
 import "C"
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -59,7 +63,7 @@ func ForkTarget(target string, argv []string) int {
 	}
 	pid := int(c_pid)
 	fmt.Println(pid)
-	return  pid
+	return pid
 }
 
 // wait target
@@ -102,4 +106,44 @@ func ReadRegisters(pid int, reg *Reg_X64) {
 	c_pid := C.int(pid)
 	c_reg := unsafe.Pointer(reg)
 	C.ptrace_read_regs(c_pid, c_reg)
+}
+
+type ProcMemSegment struct {
+	Start     uint64
+	End       uint64
+	Size      uint64
+	AttrRead  bool
+	AttrWrite bool
+	AttrExec  bool
+	Path      string
+}
+
+func ReadProcMap(pid int) []ProcMemSegment {
+	procMemSegs := []ProcMemSegment{}
+	path := fmt.Sprintf("/proc/%d/maps", pid)
+	f, _ := os.Open(path)
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		seg := ProcMemSegment{}
+		line := sc.Text()
+		ary := strings.Fields(line)
+
+		// start-end
+		addrs := strings.Split(ary[0], "-")
+		start, _ := strconv.ParseInt(addrs[0], 16, 64)
+		end, _ := strconv.ParseInt(addrs[1], 16, 64)
+		seg.Start = uint64(start)
+		seg.End = uint64(end)
+
+		// Attribute
+		seg.AttrRead = strings.Contains(ary[1], "r")
+		seg.AttrWrite = strings.Contains(ary[1], "w")
+		seg.AttrExec = strings.Contains(ary[1], "x")
+
+		// path
+		seg.Path = ary[5]
+		procMemSegs = append(procMemSegs, seg)
+	}
+	return procMemSegs
 }
